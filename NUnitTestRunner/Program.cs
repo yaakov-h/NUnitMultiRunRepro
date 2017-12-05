@@ -13,8 +13,14 @@ namespace NUnitTestRunner
 {
 	class Program
 	{
-		static void Main(string[] args)
+		static int Main(string[] args)
 		{
+			if (args.Length != 1)
+			{
+				Console.Error.WriteLine("Usage: NUnitTestRunner.exe <assembly path>");
+				return -1;
+			}
+
 			Console.WriteLine("NUnitTestRunner Starting...");
 			Console.WriteLine("Using NUnit Engine {0}", GetNUnitEngineVersion());
 
@@ -23,7 +29,7 @@ namespace NUnitTestRunner
 			{
 				Console.WriteLine("Created engine instance.");
 
-				var assemblyToTest = @"..\..\..\NUnitGuineaPig\bin\Debug\NUnitGuineaPig.dll";
+				var assemblyToTest = args[0];
 				Console.WriteLine("Will run tests on {0} (NUnit Framework {1})", Path.GetFileName(assemblyToTest), GetNUnitFrameworkVersion(assemblyToTest));
 
 				var builder = engine.Services.GetService<ITestFilterService>().GetTestFilterBuilder();
@@ -43,7 +49,7 @@ namespace NUnitTestRunner
 						var text = XmlToText(xml);
 
 						var cases = xml.SelectNodes("//test-case");
-						Console.WriteLine("[Iteration #{0}]: Ran {1} tests.", i,cases.Count);
+						Console.WriteLine("[Iteration #{0}]: Ran {1} tests.", i, cases.Count);
 
 						foreach (XmlNode testCase in cases)
 						{
@@ -51,6 +57,18 @@ namespace NUnitTestRunner
 							var result = testCase.Attributes["result"].Value;
 
 							Console.WriteLine("[Iteration #{0}]: {1}: {2}", i, fullName, result);
+
+							var failureText = testCase.SelectSingleNode("failure/message")?.InnerText;
+							if (!string.IsNullOrEmpty(failureText))
+							{
+								Console.WriteLine(failureText);
+							}
+
+							var stackTrace = testCase.SelectSingleNode("failure/stack-trace")?.InnerText;
+							if (!string.IsNullOrEmpty(stackTrace))
+							{
+								Console.WriteLine(stackTrace);
+							}
 						}
 					}
 					Console.WriteLine("[Iteration #{0}]: Completed.", i);
@@ -59,6 +77,7 @@ namespace NUnitTestRunner
 				Console.WriteLine("NUnitTestRunner Finished. Disposing of engine...");
 			}
 			Console.WriteLine("Completed.");
+			return 0;
 		}
 
 		static string GetNUnitEngineVersion() => FileVersionInfo.GetVersionInfo(typeof(ITestEngine).Assembly.Location).ProductVersion;
